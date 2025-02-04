@@ -13,6 +13,7 @@ crit_3_t = [60, 20, None, None, None, None, None, None, None]
 
 """
  a chromosome would be encoded by [net, crit, net, crit, net, crit, net, crit]
+ - if mf not defined at the criticality level we neither penalize nor reward
 """
 
 def fitness_func(ga_instance, solution, solution_idx):
@@ -21,9 +22,11 @@ def fitness_func(ga_instance, solution, solution_idx):
     for i in range(0, len(solution), 2):
         net = solution[i]
         crit = solution[i+1]
+        # if crit == 0:
+        #     continue
         mfIndex  = i // 2
         if not mfCheck(mfIndex, crit):
-            return -1
+            continue
         if crit == 1:
             total_cost[net] += (crit_1_c[mfIndex] / crit_1_t[mfIndex])
         elif crit == 2:
@@ -40,6 +43,9 @@ def fitness_func(ga_instance, solution, solution_idx):
     fitness = 0
     for i in range(1, len(solution), 2):
         crit = solution[i]
+        mfIndex  = i // 2
+        if not mfCheck(mfIndex, crit):
+            continue
         if crit == 1:
             fitness += 3
         elif crit == 2:
@@ -67,14 +73,17 @@ def on_generation(ga_instance):
     print(f"Generation = {ga_instance.generations_completed}")
     print(f"Fitness    = {ga_instance.best_solution(pop_fitness=ga_instance.last_generation_fitness)[1]}")
     
-ga_instance = pygad.GA(num_generations=20,
-                       num_parents_mating=2,
-                       sol_per_pop=5,
+ga_instance = pygad.GA(num_generations=40,
+                       num_parents_mating=10,
+                       sol_per_pop=20,
                        num_genes=len(crit_1_c) * 2,
                        fitness_func=fitness_func,
                        gene_type=int,
                        on_generation=on_generation,
-                       gene_space=[{'low': 0, 'high': 2}, {'low': 1, 'high': 3}] * len(crit_1_c)
+                       gene_space=[{'low': 0, 'high': 3}, {'low': 1, 'high': 4}] * len(crit_1_c),
+                       save_solutions=True,
+                       parent_selection_type="sss",
+                       mutation_type="random",
                        )
 
 # Running the GA to optimize the parameters of the function.
@@ -91,11 +100,4 @@ print(f"Index of the best solution : {solution_idx}")
 if ga_instance.best_solution_generation != -1:
     print(f"Best fitness value reached after {ga_instance.best_solution_generation} generations.")
 
-# Saving the GA instance.
-filename = 'genetic.txt' # The filename to which the instance is saved. The name is without extension.
-ga_instance.save(filename=filename)
-
-# Loading the saved GA instance.
-loaded_ga_instance = pygad.load(filename=filename)
-loaded_ga_instance.plot_fitness()
-    
+ga_instance.summary()
