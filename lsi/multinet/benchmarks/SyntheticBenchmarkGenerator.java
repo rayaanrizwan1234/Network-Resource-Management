@@ -1,5 +1,7 @@
 package lsi.multinet.benchmarks;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Random;
 
 import lsi.multinet.MessageFlow;
@@ -148,5 +150,32 @@ public class SyntheticBenchmarkGenerator {
 		
 		return util;
 	}
+
+	public Benchmark generateCSV(String filePath) {
+        Benchmark benchmark = getSyntheticBenchmark();
+        try (FileWriter writer = new FileWriter(filePath)) {
+            writer.append("Name,Payload,Period,CriticalityLevel\n");
+            for (MessageFlow mf : benchmark.flows) {
+                for (int c = 1; c < nCrit; c++) {
+                    writer.append(mf.getName())
+                          .append(',');
+                    if (mf.hasCriticality(c)) {
+                        writer.append(String.valueOf(mf.getPayload(c)))
+                              .append(',')
+                              .append(String.valueOf(mf.getPeriod(c)));
+                    } else {
+                        writer.append("None,None");
+                    }
+                    writer.append(',')
+                          .append(String.valueOf(c))
+                          .append('\n');
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+		return benchmark;
+    }
 
 }

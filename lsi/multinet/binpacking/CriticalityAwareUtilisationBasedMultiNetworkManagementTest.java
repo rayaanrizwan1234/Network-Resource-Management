@@ -22,11 +22,11 @@ public class CriticalityAwareUtilisationBasedMultiNetworkManagementTest {
 		
 		benchmark.clone().setManagement(mgmt);
 		
-		System.out.println(mgmt.performInvertedAllocation());
+		System.out.println(mgmt.performAllocation());
 		mgmt.printAllAllocations();
 		mgmt.printUnallocatedElements();
-		
-		
+
+		System.out.println(mgmt.getObjectiveScore());
 	}
 	
 	

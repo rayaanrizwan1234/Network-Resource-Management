@@ -175,7 +175,7 @@ public abstract class MultiNetworkManagement {
     		System.out.println(alloc.toString());
         }
         
-		
+		System.out.println("Total number of allocations: "+allocations.size());
 	}
 	
 
