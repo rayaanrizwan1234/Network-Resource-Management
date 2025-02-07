@@ -18,6 +18,9 @@ generation_times = []
 diversity_values = []
 start_time = time.time()
 
+# Initial Population for second GA
+initialPop = []
+
 def read_data(file_path):
     """Read data from CSV file and populate criticality arrays."""
     data = pd.read_csv(file_path)
@@ -126,6 +129,35 @@ def fitness_func2(ga_instance, solution, solution_idx):
     
     return res
 
+def fitness_func3(ga_instance, solution, solution_idx):
+    """Fitness function to maximize network utilization"""
+    total_cost = [0] * len(NETWORKS)
+    
+    for i in range(0, len(solution), 2):
+        net = solution[i]
+        crit = solution[i + 1]
+        mfIndex = i // 2
+
+        if not mf_check(mfIndex, crit):
+            continue
+
+        if crit == 1:
+            total_cost[net] += (CRIT_1_C[mfIndex] / CRIT_1_T[mfIndex])
+        elif crit == 2:
+            total_cost[net] += (CRIT_2_C[mfIndex] / CRIT_2_T[mfIndex])
+        elif crit == 3:
+            total_cost[net] += (CRIT_3_C[mfIndex] / CRIT_3_T[mfIndex])
+    
+    ff = []
+    for i, cost in enumerate(total_cost):
+        if cost > NETWORKS[i]:
+            utilization = (NETWORKS[i] - cost) / NETWORKS[i]
+        else: 
+            utilization = cost / NETWORKS[i]
+        ff.append(utilization)
+    
+    return ff
+
 def check_valid(solution):
     """Check if the solution is valid and print any violations."""
     total_cost = [0] * len(NETWORKS)
@@ -167,6 +199,9 @@ def on_generation(ga_instance):
     
     diversity = calculate_diversity(ga_instance.population)
     diversity_values.append(diversity)
+
+    if ga_instance.generations_completed >= 100:
+        initialPop.append(best_solution)
     
     print(f"Generation = {ga_instance.generations_completed}")
     print(f"Best Fitness = {best_solution_fitness}")
@@ -191,8 +226,28 @@ def main():
     # Running the GA to optimize the parameters of the function.
     ga_instance.run()
 
+    ga_instance2 = pygad.GA(num_generations=150,
+                           num_parents_mating=15,
+                           initial_population=initialPop,
+                           fitness_func=fitness_func3,
+                           gene_type=int,
+                           on_generation=on_generation,
+                           gene_space=[{'low': 0, 'high': 3}, {'low': 1, 'high': 4}] * len(CRIT_1_C),
+                           save_solutions=False,
+                           parent_selection_type="sss",
+                           mutation_type="random",
+                           crossover_type="scattered")
+    
+    ga_instance2.run()
+
     # Returning the details of the best solution.
     solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
+    print(f"Parameters of the best solution : {solution}")
+    print(f"Fitness value of the best solution = {solution_fitness}")
+    check_valid(solution)
+
+    print("GA 2 ======================================")
+    solution, solution_fitness, solution_idx = ga_instance2.best_solution(ga_instance2.last_generation_fitness)
     print(f"Parameters of the best solution : {solution}")
     print(f"Fitness value of the best solution = {solution_fitness}")
     check_valid(solution)
