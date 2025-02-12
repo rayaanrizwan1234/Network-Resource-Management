@@ -1,6 +1,7 @@
 package lsi.multinet.binpacking;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import lsi.multinet.Allocation;
@@ -10,7 +11,9 @@ import lsi.multinet.MessageFlow;
 public class CriticalityAwareUtilisationBasedMultiNetworkManagement
 		extends UtilisationBasedMultiNetworkManagement {
 
-	ArrayList<MessageFlowElement>[] criticalities;
+		ArrayList<MessageFlowElement>[] criticalities;
+		ArrayList<MessageFlowElement>[] criticalities1;
+		ArrayList<MessageFlowElement>[] criticalities2;
 
 	public CriticalityAwareUtilisationBasedMultiNetworkManagement() {
 
@@ -20,6 +23,8 @@ public class CriticalityAwareUtilisationBasedMultiNetworkManagement
 		this.setDecreasing(true);
 
 		criticalities = new ArrayList[Configuration.CriticalityLevels];
+		criticalities1 = new ArrayList[Configuration.CriticalityLevels];
+		criticalities2 = new ArrayList[Configuration.CriticalityLevels];
 
 		for (int i = 0; i < criticalities.length; i++) {
 
@@ -29,13 +34,29 @@ public class CriticalityAwareUtilisationBasedMultiNetworkManagement
 
 	}
 
+	void splitMessageFlows(double flowRatio) {
+		for (int i = 0; i < criticalities.length; i++) {
+			if (criticalities[i].size() > 0){
+				int numFlows = (int) (criticalities[i].size() * flowRatio);
+				criticalities1[i] = new ArrayList<MessageFlowElement>(criticalities[i].subList(0, numFlows));
+				criticalities2[i] = new ArrayList<MessageFlowElement>(criticalities[i].subList(numFlows, criticalities[i].size()));
+			} else {
+				criticalities1[i] = new ArrayList<MessageFlowElement>();
+				criticalities2[i] = new ArrayList<MessageFlowElement>();
+			}
+		}	
+		System.out.println("criticalities: " + Arrays.toString(criticalities));
+		System.out.println("criticalities1: " + Arrays.toString(criticalities1));
+		System.out.println("criticalities2: " + Arrays.toString(criticalities2));
+	}
+
 	@Override
 	public boolean performAllocation() {
 
 		boolean allSuccess = true;
-		populateCriticalityLists();
+		// populateCriticalityLists();
 
-		for (int i = criticalities.length - 1; i >= 0; i--) { // iterate all crit levels from hi->lo
+		for (int i = criticalities1.length - 1; i >= 0; i--) { // iterate all crit levels from hi->lo
 
 			ArrayList allocated = getAllAllocatedElements();
 
@@ -75,7 +96,7 @@ public class CriticalityAwareUtilisationBasedMultiNetworkManagement
 
 			// allocate unallocated flows at the current crit level
 
-			for (Iterator<MessageFlowElement> iterator2 = criticalities[i].iterator(); iterator2.hasNext();) {
+			for (Iterator<MessageFlowElement> iterator2 = criticalities1[i].iterator(); iterator2.hasNext();) {
 
 				if (isAllocated(iterator2.next().getMessageFlow())) {
 
@@ -85,13 +106,63 @@ public class CriticalityAwareUtilisationBasedMultiNetworkManagement
 
 			}
 
-			elements = criticalities[i];
+			elements = criticalities1[i];
 			allSuccess = super.performAllocation() || allSuccess;
 
 		}
 
 		return allSuccess;
 
+	}
+
+	public boolean performAllocation2Stage() {
+
+		boolean allSuccess = true;
+
+		for (int i = criticalities2.length - 1; i >= 0; i--) { // iterate all crit levels from hi->lo
+			ArrayList allocated = getAllAllocatedElements();
+
+			this.sortMessageFlowElementByBandwidthUtilisation(allocated, !decreasing);
+
+			for (Iterator iterator1 = allocated.iterator(); iterator1.hasNext();) {
+				MessageFlowElement flow = (MessageFlowElement) iterator1.next();
+
+				if (flow.getMessageFlow().hasCriticality(i) & flow.getAllocatedCritLevel() > i) {
+
+					int old = flow.getAllocatedCritLevel();
+					deallocate(flow);
+
+					// tries to re-allocate flow at a lower crit level
+					flow.setAllocatedCritLevel(i);
+					boolean success = performAllocationStep(flow);
+					// System.out.println("upgrade attempt: "+flow.getId()+" "+old+"->"+i);
+					if (!success) {
+						// System.out.println("upgrade failed -- rollback: "+flow.getId()+"
+						// "+old+"<-"+i);
+						// rollback
+
+						flow.setAllocatedCritLevel(old);
+						success = performAllocationStep(flow);
+						if (!success) {
+							System.out
+									.println("CRITICAL ERROR - unsuccessful rollback of criticality-aware allocation");
+						}
+					} else {
+						// System.out.println("upgrade success: "+flow.getId()+" "+old+"->"+i);
+					}
+				}
+			}
+
+			// allocate unallocated flows at the current crit level
+			for (Iterator<MessageFlowElement> iterator2 = criticalities2[i].iterator(); iterator2.hasNext();) {
+				if (isAllocated(iterator2.next().getMessageFlow())) {
+					iterator2.remove();
+				}
+			}
+			elements = criticalities2[i];
+			allSuccess = super.performAllocation() || allSuccess;
+		}
+		return allSuccess;
 	}
 
 	public boolean performInvertedAllocation() {

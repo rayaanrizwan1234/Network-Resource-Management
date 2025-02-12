@@ -23,16 +23,17 @@ public class main {
         );
 
         Benchmark benchmark = generator.generateCSV("message_flows.csv");
-        Network wifi = new Network(64000,0);
+        double capRatio = 0.9;
+        Network wifi = new Network(64000 * capRatio,0);
 		wifi.setName("WiFi");
 		benchmark.addNetwork(wifi);
 		
 		
-		Network lora = new Network(1760,0); // LoRa SF9
+		Network lora = new Network(1760 * capRatio,0); // LoRa SF9
 		lora.setName("LoRa");
 		benchmark.addNetwork(lora);
 		
-		Network sigfox = new Network(48,0);
+		Network sigfox = new Network(48 * capRatio,0);
 		sigfox.setName("SigFox");
 		benchmark.addNetwork(sigfox);
 		
@@ -42,24 +43,39 @@ public class main {
 		System.out.println("-------------------------------------------");
 		System.out.println("------------------CABF---------------------");
 
+        final double flowRatio = 1;
 		
 		mgmt = new CriticalityAwareUtilisationBasedMultiNetworkManagement();
 		mgmt.setDecreasing(false);
 		mgmt.setBestFit();
 		
 		benchmark.clone().setManagement(mgmt);
+
+        mgmt.populateCriticalityLists(); 
+
+        mgmt.splitMessageFlows(flowRatio);
 		
 		System.out.println(mgmt.performAllocation());
 		mgmt.printAllAllocations();
+        System.out.println(mgmt.getObjectiveScore());
 		// mgmt.printUnallocatedElements();
 
-		System.out.println(mgmt.getObjectiveScore());
+        for (NetworkBin bin : mgmt.bins) {
+            final var name = bin.network.getName();
+            if (name == "WiFi") {
+                bin.network.setBandwidth(64000);
+            } else if (name == "LoRa") {
+                bin.network.setBandwidth(1760);
+            } else if (name == "SigFox") {
+                bin.network.setBandwidth(48);
+            }
+        }
 
+        System.out.println("Second Stage =======================================");
 
-        // Generate the synthetic benchmark
-        // Benchmark benchmark = generator.getSyntheticBenchmark();
-
-        // Print the generated benchmark
-        // System.out.println(benchmark);
+        System.out.println(mgmt.performAllocation2Stage());
+		mgmt.printAllAllocations();
+        System.out.println(mgmt.getObjectiveScore());
+        
     }
 }
