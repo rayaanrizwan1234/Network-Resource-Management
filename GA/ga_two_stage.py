@@ -56,7 +56,6 @@ def mf_check(i, crit):
 def fitness_func(ga_instance, solution, solution_idx):
     """Calculate the fitness score of a solution."""
     total_cost = [0] * len(NETWORKS)
-    fitness = 0
     
     for i in range(0, len(solution), 2):
         net = solution[i]
@@ -68,13 +67,10 @@ def fitness_func(ga_instance, solution, solution_idx):
 
         if crit == 1:
             total_cost[net] += (CRIT_1_C[mfIndex] / CRIT_1_T[mfIndex])
-            fitness += 3
         elif crit == 2:
             total_cost[net] += (CRIT_2_C[mfIndex] / CRIT_2_T[mfIndex])
-            fitness += 2
         elif crit == 3:
             total_cost[net] += (CRIT_3_C[mfIndex] / CRIT_3_T[mfIndex])
-            fitness += 1
 
     # Adjust fitness based on the difference between cost and network capability
     invalid = False
@@ -83,10 +79,13 @@ def fitness_func(ga_instance, solution, solution_idx):
         if cost > NETWORKS[i]:
             invalid = True
             diff += cost - NETWORKS[i]
-    if invalid:
-        return (fitness * 0.02) - diff
 
-    return fitness
+    allocated_flows = sum(1 for i in range(0, len(solution), 2) if mf_check(i // 2, solution[i + 1]))
+
+    if invalid:
+        return (allocated_flows * 0.02) - diff
+    
+    return allocated_flows
 
 def fitness_func2(ga_instance, solution, solution_idx):
     """Multi-objective fitness function"""
@@ -153,7 +152,7 @@ def fitness_func3(ga_instance, solution, solution_idx):
         if cost > NETWORKS[i]:
             utilization = (NETWORKS[i] - cost) / NETWORKS[i]
         else: 
-            utilization = cost / NETWORKS[i]
+            utilization = (cost / NETWORKS[i])*100
         ff.append(utilization)
     
     return ff
@@ -226,7 +225,9 @@ def main():
     # Running the GA to optimize the parameters of the function.
     ga_instance.run()
 
-    ga_instance2 = pygad.GA(num_generations=150,
+    print(initialPop)
+
+    ga_instance2 = pygad.GA(num_generations=50,
                            num_parents_mating=15,
                            initial_population=initialPop,
                            fitness_func=fitness_func3,
@@ -234,7 +235,7 @@ def main():
                            on_generation=on_generation,
                            gene_space=[{'low': 0, 'high': 3}, {'low': 1, 'high': 4}] * len(CRIT_1_C),
                            save_solutions=False,
-                           parent_selection_type="sss",
+                           parent_selection_type="tournament",
                            mutation_type="random",
                            crossover_type="scattered")
     
@@ -245,6 +246,9 @@ def main():
     print(f"Parameters of the best solution : {solution}")
     print(f"Fitness value of the best solution = {solution_fitness}")
     check_valid(solution)
+    # Number of flows allocated
+    total_flows = sum(1 for i in range(0, len(solution), 2) if mf_check(i // 2, solution[i + 1]))
+    print(f"Total flows allocated: {total_flows}")
 
     print("GA 2 ======================================")
     solution, solution_fitness, solution_idx = ga_instance2.best_solution(ga_instance2.last_generation_fitness)

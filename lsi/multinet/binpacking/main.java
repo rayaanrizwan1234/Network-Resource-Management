@@ -5,7 +5,6 @@ import lsi.multinet.benchmarks.*;
 
 public class main {
     public static void main(String[] args) {
-        // Test the MessageFlow class
         // Parameters for the generator
         int nflows = 5000;
         double minPeriod = 5.0;
@@ -22,60 +21,57 @@ public class main {
             nflows, minPeriod, maxPeriod, targetUtil, nCrit, hasCritFactor, minCritFactor, maxCritFactor, seed
         );
 
-        Benchmark benchmark = generator.generateCSV("message_flows.csv");
-        double capRatio = 0.9;
-        Network wifi = new Network(64000 * capRatio,0);
-		wifi.setName("WiFi");
-		benchmark.addNetwork(wifi);
+        double capRatio = 0.36;
+        double flowRatio = 0.13;
+
+        // Loop over possible values of capRatio and flowRatio
+        Benchmark benchmark = generator.generateCSV("Network-Resource-Management/message_flows.csv");
 		
-		
-		Network lora = new Network(1760 * capRatio,0); // LoRa SF9
-		lora.setName("LoRa");
-		benchmark.addNetwork(lora);
-		
-		Network sigfox = new Network(48 * capRatio,0);
-		sigfox.setName("SigFox");
-		benchmark.addNetwork(sigfox);
-		
+        // Create networks with the current capRatio
+        Network wifi = new Network(64000 * capRatio, 0);
+        wifi.setName("WiFi");
+        benchmark.addNetwork(wifi);
+
+        Network lora = new Network(1760 * capRatio, 0); // LoRa SF9
+        lora.setName("LoRa");
+        benchmark.addNetwork(lora);
+
+        Network sigfox = new Network(48 * capRatio, 0);
+        sigfox.setName("SigFox");
+        benchmark.addNetwork(sigfox);
 
         CriticalityAwareUtilisationBasedMultiNetworkManagement mgmt;
-		
-		System.out.println("-------------------------------------------");
-		System.out.println("------------------CABF---------------------");
 
-        final double flowRatio = 1;
-		
-		mgmt = new CriticalityAwareUtilisationBasedMultiNetworkManagement();
-		mgmt.setDecreasing(false);
-		mgmt.setBestFit();
-		
-		benchmark.clone().setManagement(mgmt);
+        mgmt = new CriticalityAwareUtilisationBasedMultiNetworkManagement();
+        mgmt.setDecreasing(false);
+        mgmt.setBestFit();
 
-        mgmt.populateCriticalityLists(); 
+        benchmark.clone().setManagement(mgmt);
 
+        mgmt.populateCriticalityLists();
         mgmt.splitMessageFlows(flowRatio);
-		
-		System.out.println(mgmt.performAllocation());
-		mgmt.printAllAllocations();
-        System.out.println(mgmt.getObjectiveScore());
-		// mgmt.printUnallocatedElements();
 
+        mgmt.performAllocation();
+
+        // Restore full capacity for the second stage
         for (NetworkBin bin : mgmt.bins) {
             final var name = bin.network.getName();
-            if (name == "WiFi") {
+            if (name.equals("WiFi")) {
                 bin.network.setBandwidth(64000);
-            } else if (name == "LoRa") {
+            } else if (name.equals("LoRa")) {
                 bin.network.setBandwidth(1760);
-            } else if (name == "SigFox") {
+            } else if (name.equals("SigFox")) {
                 bin.network.setBandwidth(48);
             }
         }
 
-        System.out.println("Second Stage =======================================");
+        mgmt.performAllocation2Stage();
+        double objectiveScore = mgmt.getObjectiveScore();
 
-        System.out.println(mgmt.performAllocation2Stage());
-		mgmt.printAllAllocations();
-        System.out.println(mgmt.getObjectiveScore());
-        
+        System.out.println("capRatio: " + capRatio);
+        System.out.println("flowRatio: " + flowRatio);
+        System.out.println("Objective Score: " + objectiveScore);
+        final var numFlows = mgmt.printAllAllocations();
+
     }
 }

@@ -183,10 +183,12 @@ def main():
                            gene_type=int,
                            on_generation=on_generation,
                            gene_space=[{'low': 0, 'high': 3}, {'low': 1, 'high': 4}] * len(CRIT_1_C),
-                           save_solutions=False,
+                           save_solutions=True,
                            parent_selection_type="sss",
                            mutation_type="random",
-                           crossover_type="scattered")
+                        #    mutation_percent_genes=(0.1, 0.1), # higher mutation chance for lower fitness solution
+                           crossover_type="scattered",
+                           )
 
     # Running the GA to optimize the parameters of the function.
     ga_instance.run()
@@ -220,6 +222,10 @@ def main():
     print(f"Average Time per Generation: {total_execution_time / len(generation_times)} seconds")
 
     ga_instance.plot_fitness()
+
+    ga_instance.plot_pareto_front_curve()
+
+    ga_instance.plot_new_solution_rate()
 
 if __name__ == "__main__":
     main()

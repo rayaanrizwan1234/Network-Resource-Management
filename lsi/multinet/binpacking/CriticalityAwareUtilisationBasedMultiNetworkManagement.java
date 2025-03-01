@@ -39,15 +39,22 @@ public class CriticalityAwareUtilisationBasedMultiNetworkManagement
 			if (criticalities[i].size() > 0){
 				int numFlows = (int) (criticalities[i].size() * flowRatio);
 				criticalities1[i] = new ArrayList<MessageFlowElement>(criticalities[i].subList(0, numFlows));
-				criticalities2[i] = new ArrayList<MessageFlowElement>(criticalities[i].subList(numFlows, criticalities[i].size()));
 			} else {
 				criticalities1[i] = new ArrayList<MessageFlowElement>();
-				criticalities2[i] = new ArrayList<MessageFlowElement>();
 			}
 		}	
-		System.out.println("criticalities: " + Arrays.toString(criticalities));
-		System.out.println("criticalities1: " + Arrays.toString(criticalities1));
-		System.out.println("criticalities2: " + Arrays.toString(criticalities2));
+		criticalities2 = criticalities.clone();
+	}
+
+	// put all unallocated flows from the first stage in the second stage
+	void putUnallocatedFlowsInSecondStage() {
+		for (int i = 0; i < criticalities2.length; i++) {
+			for (Iterator<MessageFlowElement> iterator = criticalities2[i].iterator(); iterator.hasNext();) {
+				if (isAllocated(iterator.next().getMessageFlow())) {
+					iterator.remove();
+				}
+			}		
+		}
 	}
 
 	@Override
@@ -110,6 +117,8 @@ public class CriticalityAwareUtilisationBasedMultiNetworkManagement
 			allSuccess = super.performAllocation() || allSuccess;
 
 		}
+
+		putUnallocatedFlowsInSecondStage();
 
 		return allSuccess;
 

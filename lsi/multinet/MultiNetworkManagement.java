@@ -168,7 +168,7 @@ public abstract class MultiNetworkManagement {
 
 	
 	
-	public void printAllAllocations(){
+	public int printAllAllocations(){
 		
         for (Allocation alloc: allocations) {
             
@@ -176,6 +176,7 @@ public abstract class MultiNetworkManagement {
         }
         
 		System.out.println("Total number of allocations: "+allocations.size());
+		return allocations.size();
 	}
 	
 
