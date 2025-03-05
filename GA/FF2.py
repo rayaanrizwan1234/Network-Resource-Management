@@ -109,7 +109,7 @@ def fitness_func2(ga_instance, solution, solution_idx):
            fitness += (crit + 1) # the only difference between FF1 and FF2
   
    if invalid:
-       fitness = - diff
+       fitness -= diff
 
    res = [fitness]
 
@@ -118,8 +118,7 @@ def fitness_func2(ga_instance, solution, solution_idx):
    res.append(allocated_flows)
 
 
-#    return fitness * allocated_flows
-   return fitness
+   return fitness * allocated_flows
 
 def check_valid(solution):
     """Check if the solution is valid and print any violations."""
@@ -174,7 +173,7 @@ def main():
                            fitness_func=fitness_func2,
                            gene_type=int,
                            on_generation=on_generation,
-                           gene_space=[{'low': 0, 'high': 3}, {'low': 0, 'high': 4}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
+                           gene_space=[{'low': 0, 'high': 3}, {'low': 0, 'high': 9}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
                            save_solutions=True,
                            parent_selection_type="sss",
                            mutation_type="random",
