@@ -156,7 +156,7 @@ public class SyntheticBenchmarkGenerator {
         try (FileWriter writer = new FileWriter(filePath)) {
             writer.append("Name,Payload,Period,CriticalityLevel\n");
             for (MessageFlow mf : benchmark.flows) {
-                for (int c = 1; c < nCrit; c++) {
+                for (int c = 0; c < nCrit; c++) {
                     writer.append(mf.getName())
                           .append(',');
                     if (mf.hasCriticality(c)) {

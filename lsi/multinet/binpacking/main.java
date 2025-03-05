@@ -10,23 +10,24 @@ public class main {
         double minPeriod = 5.0;
         double maxPeriod = 120.0;
         double targetUtil = 30;
-        int nCrit = 4;
+        int nCrit = 3;
         double hasCritFactor = 0.8;
         double minCritFactor = 0.4;
         double maxCritFactor = 0.8;
-        int seed = 1;
+        int seed = 3;
 
         // Create an instance of the generator
         SyntheticBenchmarkGenerator generator = new SyntheticBenchmarkGenerator(
             nflows, minPeriod, maxPeriod, targetUtil, nCrit, hasCritFactor, minCritFactor, maxCritFactor, seed
         );
 
-        double capRatio = 0.36;
-        double flowRatio = 0.13;
+        double capRatio = 1.0;
+        double flowRatio = 1.0;
 
         // Loop over possible values of capRatio and flowRatio
         Benchmark benchmark = generator.generateCSV("Network-Resource-Management/message_flows.csv");
-		
+        // IoTEdgeAssistedLiving2020 benchmark = new IoTEdgeAssistedLiving2020();
+
         // Create networks with the current capRatio
         Network wifi = new Network(64000 * capRatio, 0);
         wifi.setName("WiFi");
@@ -42,36 +43,38 @@ public class main {
 
         CriticalityAwareUtilisationBasedMultiNetworkManagement mgmt;
 
-        mgmt = new CriticalityAwareUtilisationBasedMultiNetworkManagement();
+        mgmt = new CriticalityAwareUtilisationBasedMultiNetworkManagement(nCrit);
         mgmt.setDecreasing(false);
         mgmt.setBestFit();
 
         benchmark.clone().setManagement(mgmt);
 
-        mgmt.populateCriticalityLists();
-        mgmt.splitMessageFlows(flowRatio);
+        // mgmt.populateCriticalityLists();
+        // mgmt.splitMessageFlows(flowRatio);
 
         mgmt.performAllocation();
 
-        // Restore full capacity for the second stage
-        for (NetworkBin bin : mgmt.bins) {
-            final var name = bin.network.getName();
-            if (name.equals("WiFi")) {
-                bin.network.setBandwidth(64000);
-            } else if (name.equals("LoRa")) {
-                bin.network.setBandwidth(1760);
-            } else if (name.equals("SigFox")) {
-                bin.network.setBandwidth(48);
-            }
-        }
+        // // Restore full capacity for the second stage
+        // for (NetworkBin bin : mgmt.bins) {
+        //     final var name = bin.network.getName();
+        //     if (name.equals("WiFi")) {
+        //         bin.network.setBandwidth(64000);
+        //     } else if (name.equals("LoRa")) {
+        //         bin.network.setBandwidth(1760);
+        //     } else if (name.equals("SigFox")) {
+        //         bin.network.setBandwidth(48);
+        //     }
+        // }
 
-        mgmt.performAllocation2Stage();
+        // mgmt.performAllocation2Stage();
+        final var numFlows = mgmt.printAllAllocations();
+
         double objectiveScore = mgmt.getObjectiveScore();
 
-        System.out.println("capRatio: " + capRatio);
-        System.out.println("flowRatio: " + flowRatio);
+        // System.out.println("capRatio: " + capRatio);
+        // System.out.println("flowRatio: " + flowRatio);
         System.out.println("Objective Score: " + objectiveScore);
-        final var numFlows = mgmt.printAllAllocations();
+        mgmt.getNetworkCost();
 
     }
 }

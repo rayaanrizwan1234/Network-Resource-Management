@@ -58,16 +58,19 @@ public class IoTEdgeAssistedLiving2020 extends Benchmark{
 		
 		// declare networks
 		
-		Network wifi = new Network(8000,0);
+		Network wifi = new Network(64000,0);
+		// Network wifi = new Network(8000,0);
 		wifi.setName("WiFi");
 		b.addNetwork(wifi);
 		
 		
-		Network lora = new Network(220,0); // LoRa SF9
+		Network lora = new Network(1760,0); // LoRa SF9
+		// Network lora = new Network(220,0); // LoRa SF9
 		lora.setName("LoRa");
 		b.addNetwork(lora);
 		
-		Network sigfox = new Network(6,0);
+		Network sigfox = new Network(48,0);
+		// Network sigfox = new Network(6,0);
 		sigfox.setName("SigFox");
 		b.addNetwork(sigfox);
 		

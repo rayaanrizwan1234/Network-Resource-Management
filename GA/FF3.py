@@ -7,9 +7,10 @@ import math
 # Constants and Global Variables
 NETWORKS = [64000, 1760, 48]
 DATA_FILE = '../message_flows.csv'
-CRIT_1_C, CRIT_1_T = [], []
-CRIT_2_C, CRIT_2_T = [], []
-CRIT_3_C, CRIT_3_T = [], []
+
+CRIT = []
+# MAKE SURE TO CHANGE THIS WHEN CHANGING CRITICALITY LEVELS
+L = 3
 
 # Metrics
 best_fitness_values = []
@@ -18,7 +19,32 @@ generation_times = []
 diversity_values = []
 start_time = time.time()
 
+def objective_score(solution):
+    score = 0
+        
+    for i in range(0, len(solution), 2):
+        net = solution[i]
+        crit = solution[i + 1]
+        mfIndex = i // 2
+
+        if not mf_check(mfIndex, crit):
+            continue
+
+        score += L - crit
+    return score
+
 def read_data(file_path):
+    global CRIT
+    CRIT_0_C, CRIT_0_T = [], []
+    CRIT_1_C, CRIT_1_T = [], []
+    CRIT_2_C, CRIT_2_T = [], []
+    CRIT_3_C, CRIT_3_T = [], []
+
+    CRIT.append((CRIT_0_C, CRIT_0_T))
+    CRIT.append((CRIT_1_C, CRIT_1_T))
+    CRIT.append((CRIT_2_C, CRIT_2_T))
+    CRIT.append((CRIT_3_C, CRIT_3_T))
+
     """Read data from CSV file and populate criticality arrays."""
     data = pd.read_csv(file_path)
     for index, row in data.iterrows():
@@ -30,101 +56,58 @@ def read_data(file_path):
             payload = None
             period = None
 
-        if criticality == 1:
-            CRIT_1_C.append(payload)
-            CRIT_1_T.append(period)
-        elif criticality == 2:
-            CRIT_2_C.append(payload)
-            CRIT_2_T.append(period)
-        elif criticality == 3:
-            CRIT_3_C.append(payload)
-            CRIT_3_T.append(period)
+        CRIT[criticality][0].append(payload)
+        CRIT[criticality][1].append(period)
 
+    
 def mf_check(i, crit):
     """Check if the message flow is defined at the given criticality level."""
-    if crit == 1:
-        return CRIT_1_C[i] is not None
-    elif crit == 2:
-        return CRIT_2_C[i] is not None
-    elif crit == 3:
-        return CRIT_3_C[i] is not None
-    return False
-
-def fitness_func(ga_instance, solution, solution_idx):
-    """Calculate the fitness score of a solution."""
-    total_cost = [0] * len(NETWORKS)
-    fitness = 0
-    
-    for i in range(0, len(solution), 2):
-        net = solution[i]
-        crit = solution[i + 1]
-        mfIndex = i // 2
-
-        if not mf_check(mfIndex, crit):
-            continue
-
-        if crit == 1:
-            total_cost[net] += (CRIT_1_C[mfIndex] / CRIT_1_T[mfIndex])
-            fitness += 3
-        elif crit == 2:
-            total_cost[net] += (CRIT_2_C[mfIndex] / CRIT_2_T[mfIndex])
-            fitness += 2
-        elif crit == 3:
-            total_cost[net] += (CRIT_3_C[mfIndex] / CRIT_3_T[mfIndex])
-            fitness += 1
-
-    # Adjust fitness based on the difference between cost and network capability
-    invalid = False
-    diff = 0
-    for i, cost in enumerate(total_cost):
-        if cost > NETWORKS[i]:
-            invalid = True
-            diff += cost - NETWORKS[i]
-    if invalid:
-        return (fitness * 0.02) - diff
-
-    return fitness
+    if crit >= L:
+        return False
+    return CRIT[crit][0][i] is not None
 
 def fitness_func2(ga_instance, solution, solution_idx):
-    """Multi-objective fitness function"""
-    total_cost = [0] * len(NETWORKS)
-    fitness = 0
-    
-    for i in range(0, len(solution), 2):
-        net = solution[i]
-        crit = solution[i + 1]
-        mfIndex = i // 2
-
-        if not mf_check(mfIndex, crit):
-            continue
-
-        if crit == 1:
-            total_cost[net] += (CRIT_1_C[mfIndex] / CRIT_1_T[mfIndex])
-            fitness += 3
-        elif crit == 2:
-            total_cost[net] += (CRIT_2_C[mfIndex] / CRIT_2_T[mfIndex])
-            fitness += 2
-        elif crit == 3:
-            total_cost[net] += (CRIT_3_C[mfIndex] / CRIT_3_T[mfIndex])
-            fitness += 1
+   """Multi-objective fitness function"""
+   total_cost = [0] * len(NETWORKS)
+   fitness = 0
+  
+   for i in range(0, len(solution), 2):
+       net = solution[i]
+       crit = solution[i + 1]
+       mfIndex = i // 2
 
 
-    # Adjust fitness based on the difference between cost and network capability
-    invalid = False
-    diff = 0
-    for i, cost in enumerate(total_cost):
-        if cost > NETWORKS[i]:
-            invalid = True
-            diff += cost - NETWORKS[i]
-    if invalid:
-        fitness = (fitness * 0.02) - diff
-    res = [fitness]
+       if not mf_check(mfIndex, crit):
+        #    fitness += 1
+           continue
 
-    # number of allocated flows
-    allocated_flows = sum(1 for i in range(0, len(solution), 2) if mf_check(i // 2, solution[i + 1]))
-    res.append(allocated_flows)
-    
-    return res
+
+       crit_c, crit_t = CRIT[crit]
+       total_cost[net] += (crit_c[mfIndex] / crit_t[mfIndex])
+
+
+       # fitness squared
+       fitness += ((L - crit) ** 2)
+
+   # Adjust fitness based on the difference between cost and network capability
+   invalid = False
+   diff = 0
+   for i, cost in enumerate(total_cost):
+       if cost > NETWORKS[i]:
+           invalid = True
+           diff += ((cost - NETWORKS[i]) / NETWORKS[i]) * 200   
+   if invalid:
+       fitness = - diff
+   else:
+       fitness = (fitness**2)
+   res = [fitness]
+
+
+   # number of allocated flows
+   allocated_flows = sum(1 for i in range(0, len(solution), 2) if mf_check(i // 2, solution[i + 1]))
+   res.append(allocated_flows)
+  
+   return fitness
 
 def check_valid(solution):
     """Check if the solution is valid and print any violations."""
@@ -136,12 +119,9 @@ def check_valid(solution):
 
         if not mf_check(mfIndex, crit):
             continue
-        if crit == 1:
-            total_cost[net] += (CRIT_1_C[mfIndex] / CRIT_1_T[mfIndex])
-        elif crit == 2:
-            total_cost[net] += (CRIT_2_C[mfIndex] / CRIT_2_T[mfIndex])
-        elif crit == 3:
-            total_cost[net] += (CRIT_3_C[mfIndex] / CRIT_3_T[mfIndex])
+
+        crit_c, crit_t = CRIT[crit]
+        total_cost[net] += (crit_c[mfIndex] / crit_t[mfIndex])
         
     # Check if any network exceeds its limit
     for i, cost in enumerate(total_cost):
@@ -175,14 +155,14 @@ def main():
     """Main function to run the genetic algorithm."""
     read_data(DATA_FILE)
 
-    ga_instance = pygad.GA(num_generations=150,
+    ga_instance = pygad.GA(num_generations=100,
                            num_parents_mating=30,
                            sol_per_pop=80,
-                           num_genes=len(CRIT_1_C) * 2,
+                           num_genes=len(CRIT[0][0]) * 2,
                            fitness_func=fitness_func2,
                            gene_type=int,
                            on_generation=on_generation,
-                           gene_space=[{'low': 0, 'high': 3}, {'low': 1, 'high': 4}] * len(CRIT_1_C),
+                           gene_space=[{'low': 0, 'high': 3}, {'low': 1, 'high': 3}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
                            save_solutions=True,
                            parent_selection_type="sss",
                            mutation_type="random",
@@ -198,14 +178,19 @@ def main():
     print(f"Parameters of the best solution : {solution}")
     print(f"Fitness value of the best solution = {solution_fitness}")
     check_valid(solution)
-
-    # Average criticality of flows
-    total_criticality = sum(solution[i] for i in range(1, len(solution), 2) if solution[i] != 0)
-    print(f"Average criticality of flows: {total_criticality / len(CRIT_1_C)}")
+    print(f"Objective Score: {objective_score(solution)}")
 
     # Number of flows allocated
     total_flows = sum(1 for i in range(0, len(solution), 2) if mf_check(i // 2, solution[i + 1]))
     print(f"Total flows allocated: {total_flows}")
+
+    # Average criticality of allocated flows
+    totalCrit = 0
+    for i in range(1, len(solution), 2):
+        mfIndex = i // 2
+        if mf_check(mfIndex, solution[i]):
+            totalCrit += solution[i] + 1
+    print(f"Average criticality of allocated flows: {totalCrit / total_flows}")
 
     # Create a DataFrame with the solution details
     solution_df = pd.DataFrame({'Solution': solution})
