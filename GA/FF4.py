@@ -3,14 +3,15 @@ import numpy as np
 import pandas as pd
 import time
 import math
-
+import matplotlib.pyplot as plt
+from readData import read_data, read_networks
 # Constants and Global Variables
-NETWORKS = [64000, 1760, 48]
 DATA_FILE = '../message_flows.csv'
 
 CRIT = []
 # MAKE SURE TO CHANGE THIS WHEN CHANGING CRITICALITY LEVELS
-L = 3
+L = None
+NETWORKS = None
 
 # Metrics
 best_fitness_values = []
@@ -18,6 +19,7 @@ average_fitness_values = []
 generation_times = []
 diversity_values = []
 start_time = time.time()
+objectiveScores = []
 
 def objective_score(solution):
     score = 0
@@ -32,33 +34,6 @@ def objective_score(solution):
 
         score += L - crit
     return score
-
-def read_data(file_path):
-    global CRIT
-    CRIT_0_C, CRIT_0_T = [], []
-    CRIT_1_C, CRIT_1_T = [], []
-    CRIT_2_C, CRIT_2_T = [], []
-    CRIT_3_C, CRIT_3_T = [], []
-
-    CRIT.append((CRIT_0_C, CRIT_0_T))
-    CRIT.append((CRIT_1_C, CRIT_1_T))
-    CRIT.append((CRIT_2_C, CRIT_2_T))
-    CRIT.append((CRIT_3_C, CRIT_3_T))
-
-    """Read data from CSV file and populate criticality arrays."""
-    data = pd.read_csv(file_path)
-    for index, row in data.iterrows():
-        payload = row['Payload']
-        period = row['Period']
-        criticality = row['CriticalityLevel']
-
-        if math.isnan(payload) or math.isnan(period):
-            payload = None
-            period = None
-
-        CRIT[criticality][0].append(payload)
-        CRIT[criticality][1].append(period)
-
     
 def mf_check(i, crit):
     """Check if the message flow is defined at the given criticality level."""
@@ -126,28 +101,42 @@ def on_generation(ga_instance):
     start_time = time.time()
     
     best_solution, best_solution_fitness, _ = ga_instance.best_solution(pop_fitness=ga_instance.last_generation_fitness)
+    objectiveScore = objective_score(best_solution)
     best_fitness_values.append(best_solution_fitness)
     average_fitness = np.mean(ga_instance.last_generation_fitness)
     average_fitness_values.append(average_fitness)
+    objectiveScores.append(objectiveScore)
     
     diversity = calculate_diversity(ga_instance.population)
     diversity_values.append(diversity)
     
     print(f"Generation = {ga_instance.generations_completed}")
     print(f"Best Fitness = {best_solution_fitness}")
+    print(f"Objective Score: {objectiveScore}")
+
+def plotObjectiveScores():
+    """Plot the objective scores."""
+    plt.plot(objectiveScores)
+    plt.xlabel('Generation')
+    plt.ylabel('Objective Score')
+    plt.title('Objective Score vs Generation')
+    plt.show()
 
 def main():
     """Main function to run the genetic algorithm."""
-    read_data(DATA_FILE)
+    global CRIT, L, NETWORKS
+    CRIT = read_data('../message_flows.csv')
+    NETWORKS, L = read_networks('../networks.csv')
+    L = int(L)
 
     ga_instance = pygad.GA(num_generations=100,
-                           num_parents_mating=33,
-                           sol_per_pop=100,
+                           num_parents_mating=30,
+                           sol_per_pop=80,
                            num_genes=len(CRIT[0][0]) * 2,
                            fitness_func=fitness_func2,
                            gene_type=int,
                            on_generation=on_generation,
-                           gene_space=[{'low': 0, 'high': 3}, {'low': 0, 'high': 7}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
+                           gene_space=[{'low': 0, 'high': len(NETWORKS)}, {'low': 0, 'high': L+1}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
                            save_solutions=True,
                            parent_selection_type="sss",
                            mutation_type="random",
@@ -181,7 +170,7 @@ def main():
     solution_df = pd.DataFrame({'Solution': solution})
 
     # Save the DataFrame to a CSV file
-    solution_df.to_csv('/Users/rayaanrizwan/Desktop/Year 3/Dissertation/code/Network-Resource-Management/solution.csv', index=False)
+    solution_df.to_csv('solution.csv', index=False)
 
     if ga_instance.best_solution_generation != -1:
         print(f"Best fitness value reached after {ga_instance.best_solution_generation} generations.")
@@ -192,6 +181,8 @@ def main():
     print(f"Average Time per Generation: {total_execution_time / len(generation_times)} seconds")
 
     ga_instance.plot_fitness()
+
+    plotObjectiveScores()
 
     ga_instance.plot_pareto_front_curve()
 

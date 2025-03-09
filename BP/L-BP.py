@@ -4,65 +4,19 @@ import time
 import math
 from collections import defaultdict
 from tabulate import tabulate
+from readData import read_data, read_networks
 
 import csv
 
-NETWORKS = [48, 1760, 64000]
 DATA_FILE = '../message_flows.csv'
 
 CRIT = []
 # MAKE SURE TO CHANGE THIS WHEN CHANGING CRITICALITY LEVELS
-L = 3
+L = None
+NETWORKS = None
 
 ALLOCATIONS = defaultdict()
 ALLOCATED_FLOWS = []
-
-
-def read_data(file_path):
-    global CRIT
-    """Read data from CSV file and populate criticality arrays."""
-    data = pd.read_csv(file_path)
-
-    CRIT_1_C, CRIT_1_T = [], []
-    CRIT_2_C, CRIT_2_T = [], []
-    CRIT_3_C, CRIT_3_T = [], []
-    CRIT_4_C, CRIT_4_T = [], []
-
-    for index, row in data.iterrows():
-        payload = row['Payload']
-        period = row['Period']
-        criticality = row['CriticalityLevel']
-
-        if math.isnan(payload) or math.isnan(period):
-            payload = None
-            period = None
-
-        if criticality == 0:
-            CRIT_1_C.append(payload)
-            CRIT_1_T.append(period)
-        elif criticality == 1:
-            CRIT_2_C.append(payload)
-            CRIT_2_T.append(period)
-        elif criticality == 2:
-            CRIT_3_C.append(payload)
-            CRIT_3_T.append(period)
-        elif criticality == 3:
-            CRIT_4_C.append(payload)
-            CRIT_4_T.append(period)
-
-    # CRIT_1_C = [1000, 1000, 30, 40000, 80, 40000, 40000, 40]
-    # CRIT_1_T = [10, 5, 30, 10, 10, 10, 10, 3600]
-
-    # CRIT_2_C = [40, 80, 10, 10, 10, 10, 10, None] 
-    # CRIT_2_T = [20, 10, 120, 30, 30, 30, 30, None]
-
-    # CRIT_3_C = [10, 10, None, None, None, None, None, None] 
-    # CRIT_3_T = [60, 20, None, None, None, None, None, None] 
-
-    CRIT.append((CRIT_1_C, CRIT_1_T))
-    CRIT.append((CRIT_2_C, CRIT_2_T))
-    CRIT.append((CRIT_3_C, CRIT_3_T))
-    CRIT.append((CRIT_4_C, CRIT_4_T))
 
 def l_bp(worstFit=False, bestFit=False, firstFit=False):
     global ALLOCATIONS
@@ -73,7 +27,7 @@ def l_bp(worstFit=False, bestFit=False, firstFit=False):
             payload = CRIT[i][0][flow]
             period = CRIT[i][1][flow]
 
-            if flow in ALLOCATED_FLOWS or payload is None or period is None:
+            if flow in ALLOCATIONS or payload is None or period is None:
                 continue
             
             residualNetworkCap = networksCost()
@@ -89,7 +43,6 @@ def l_bp(worstFit=False, bestFit=False, firstFit=False):
 
             if network != -1:
                 ALLOCATIONS[flow] = {"Network": network, "Criticality Level": i}
-                ALLOCATED_FLOWS.append(flow)
 
     # print allocations and format it nicely
     print("Allocations:")
@@ -149,8 +102,12 @@ def objectiveScore():
 
 
 def main():
-    read_data(DATA_FILE)
-    l_bp(firstFit=True)
+    global CRIT, L, NETWORKS
+    CRIT = read_data('../message_flows.csv')
+    NETWORKS, L = read_networks('../networks.csv')
+    L = int(L)
+
+    l_bp(bestFit=True)
     print(f"Objective Score: {objectiveScore()}")
 
     # print(ALLOCATIONS[1792])
