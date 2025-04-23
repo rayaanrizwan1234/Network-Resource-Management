@@ -2,7 +2,6 @@ import pygad
 import numpy as np
 import pandas as pd
 import time
-import math
 import matplotlib.pyplot as plt
 from readData import read_data, read_networks
 # Constants and Global Variables
@@ -71,7 +70,7 @@ def fitness_func2(ga_instance, solution, solution_idx):
     for i, cost in enumerate(total_cost):
         if cost > NETWORKS[i]:
             invalid = True
-            diff += ((cost - NETWORKS[i]) / NETWORKS[i]) * 100000
+            diff += ((cost - NETWORKS[i]) / NETWORKS[i]) * 100
 
     for i in range(0, len(solution), 2):
         net = solution[i]
@@ -86,7 +85,7 @@ def fitness_func2(ga_instance, solution, solution_idx):
         total_cost[net] += (crit_c[mfIndex] / crit_t[mfIndex])
         
         if not invalid:
-            fitness += (L - crit) ** 2
+            fitness += ((L - crit)) * mf_score(mfIndex) 
         else:
             fitness += (crit + 1) # the only difference between FF1 and FF2
 
@@ -101,6 +100,12 @@ def fitness_func2(ga_instance, solution, solution_idx):
 
 
     return fitness * allocated_flows
+
+def mf_score(mf):
+    for crit in range(L - 1, -1, -1):
+        # Calculate the score for the message flow at the given criticality level
+        if mf_check(mf, crit):
+            return crit + 1
 
 def check_valid(solution):
     """Check if the solution is valid and print any violations."""
@@ -167,23 +172,20 @@ def main():
     print(f'Criticality Levels: {L}')
     print(f'Number of Message Flows: {len(CRIT[0][0])}')
 
-    # types = ['single_point', 'two_points', 'uniform', 'scattered']
-
-    # for type in types:
-
     ga_instance = pygad.GA(num_generations=100,
-                        num_parents_mating=30,
+                        num_parents_mating=40,
                         sol_per_pop=100,
                         num_genes=len(CRIT[0][0]) * 2,
                         fitness_func=fitness_func2,
                         gene_type=int,
                         on_generation=on_generation,
-                        gene_space=[{'low': 0, 'high': len(NETWORKS)}, {'low': 0, 'high': L + 2}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
+                        gene_space=[{'low': 0, 'high': len(NETWORKS)}, {'low': 0, 'high': L}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
                         # save_solutions=True,
                         parent_selection_type="sss",
                         mutation_type="random",
                         crossover_type="scattered",
-                        stop_criteria="saturate_15",
+                        stop_criteria="saturate_5",
+                        # crossover_probability=0.6
                         )
 
     # Running the GA to optimize the parameters of the function.
@@ -193,7 +195,7 @@ def main():
 
     # Returning the details of the best solution.
     solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
-    # print(f"Parameters of the best solution : {solution}")
+    print(f"Parameters of the best solution : {solution}")
     print(f"Fitness value of the best solution = {solution_fitness}")
     check_valid(solution)
     print(f"Objective Score: {objective_score(solution)}")
@@ -211,8 +213,6 @@ def main():
 
     # print average diveristy value
     print(f"Average Diversity: {np.mean(diversity_values)}")
-
-
 
     # Average criticality of allocated flows
     totalCrit = 0
@@ -234,7 +234,7 @@ def main():
 
     # plotObjectiveScores()
 
-    # # ga_instance.plot_pareto_front_curve()
+    # ga_instance.plot_pareto_front_curve()
 
     # ga_instance.plot_new_solution_rate()
 
