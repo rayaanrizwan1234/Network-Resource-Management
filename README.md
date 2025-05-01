@@ -9,18 +9,18 @@ This project implements and evaluates various algorithms for criticality-aware f
 ```
 Network-Resource-Management/
 │
-├── main.java                  # Java-based synthetic benchmark generator
+├── lsi/multinet/binpacking/main.java                  # Java-based synthetic benchmark generator
 ├── message_flows.csv         # Generated message flow benchmark (auto-generated)
 ├── networks.csv              # Network capacities and criticality levels (auto-generated)
 │
 ├── readData.py               # Data loading utility for all Python algorithms
 │
-├── H-BP.py                   # High-criticality Bin Packing (Worst Fit, Best Fit, First Fit)
-├── L-BP.py                   # Low-criticality Bin Packing variants
-├── cabf.py                   # CABF (Criticality-Aware Best Fit) Bin Packing algorithm
+├── BP/H-BP.py                   # High-criticality Bin Packing (Worst Fit, Best Fit, First Fit)
+├── BP/L-BP.py                   # Low-criticality Bin Packing variants
+├── BP/cabf.py                   # CABF (Criticality-Aware Best Fit) Bin Packing algorithm
 │
-├── Seeded-GA.py              # Genetic Algorithm initialized with a BP-based seed
-├── Unseeded-GA.py            # Purely random initialization GA variant
+├── GA/Seeded-GA.py              # Genetic Algorithm initialized with a BP-based seed
+├── GA/Unseeded-GA.py            # Purely random initialization GA variant
 │
 └── /BP/alloc.csv             # Used by Seeded-GA as initialization input
 ```
