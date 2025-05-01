@@ -2,6 +2,7 @@ import pygad
 import numpy as np
 import pandas as pd
 import time
+import math
 import matplotlib.pyplot as plt
 from readData import read_data, read_networks
 # Constants and Global Variables
@@ -41,65 +42,32 @@ def mf_check(i, crit):
     return CRIT[crit][0][i] is not None
 
 def fitness_func2(ga_instance, solution, solution_idx):
-    """Multi-objective fitness function"""
+    """FITNESS FUNCTION USED FROM SHERIFF PAPER"""
     total_cost = [0] * len(NETWORKS)
     fitness = 0
-
+    
     for i in range(0, len(solution), 2):
         net = solution[i]
         crit = solution[i + 1]
         mfIndex = i // 2
 
         if not mf_check(mfIndex, crit):
-        #    fitness += 1
-            continue
-
-        crit_c, crit_t = CRIT[crit]
-        bandwidth = (crit_c[mfIndex] / crit_t[mfIndex])
-
-        # WF Heuristic: Assign to the network with the most available capacity
-        available_capacity = [NETWORKS[j] - total_cost[j] for j in range(len(NETWORKS))]
-        biggestNetwork = available_capacity.index(max(available_capacity))  # Network with most capacity
-        if net == biggestNetwork:
             fitness += 1
-        total_cost[net] += bandwidth
-
-    # Adjust fitness based on the difference between cost and network capability
-    invalid = False
-    diff = 0
-    for i, cost in enumerate(total_cost):
-        if cost > NETWORKS[i]:
-            invalid = True
-            diff += ((cost - NETWORKS[i]) / NETWORKS[i]) * 100
-
-    for i in range(0, len(solution), 2):
-        net = solution[i]
-        crit = solution[i + 1]
-        mfIndex = i // 2
-
-        if not mf_check(mfIndex, crit):
-            # fitness += 1
             continue
 
         crit_c, crit_t = CRIT[crit]
         total_cost[net] += (crit_c[mfIndex] / crit_t[mfIndex])
-        
-        if not invalid:
-            fitness += ((L - crit)) * mf_score(mfIndex) 
+
+    # Adjust fitness based on the difference between cost and network capability
+    invalid = False
+    diff = []
+    for i, cost in enumerate(total_cost):
+        if cost > NETWORKS[i]:
+            diff.append( (NETWORKS[i] - cost) / NETWORKS[i])
         else:
-            fitness += (crit + 1) # the only difference between FF1 and FF2
-
-    if invalid:
-        fitness -= diff
-
-    res = [fitness]
-
-    # number of allocated flows
-    allocated_flows = sum(1 for i in range(0, len(solution), 2) if mf_check(i // 2, solution[i + 1]))
-    res.append(allocated_flows)
-
-
-    return fitness * allocated_flows
+           diff.append(cost / NETWORKS[i])
+    
+    return diff
 
 def mf_score(mf):
     for crit in range(L - 1, -1, -1):
@@ -172,20 +140,23 @@ def main():
     print(f'Criticality Levels: {L}')
     print(f'Number of Message Flows: {len(CRIT[0][0])}')
 
+    # types = ['single_point', 'two_points', 'uniform', 'scattered']
+
+    # for type in types:
+
     ga_instance = pygad.GA(num_generations=100,
-                        num_parents_mating=40,
+                        num_parents_mating=30,
                         sol_per_pop=100,
                         num_genes=len(CRIT[0][0]) * 2,
                         fitness_func=fitness_func2,
                         gene_type=int,
                         on_generation=on_generation,
-                        gene_space=[{'low': 0, 'high': len(NETWORKS)}, {'low': 0, 'high': L}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
+                        gene_space=[{'low': 0, 'high': len(NETWORKS)}, {'low': 0, 'high': L + 1}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
                         # save_solutions=True,
                         parent_selection_type="sss",
                         mutation_type="random",
                         crossover_type="scattered",
-                        stop_criteria="saturate_5",
-                        # crossover_probability=0.6
+                        stop_criteria="saturate_15",
                         )
 
     # Running the GA to optimize the parameters of the function.
@@ -195,7 +166,7 @@ def main():
 
     # Returning the details of the best solution.
     solution, solution_fitness, solution_idx = ga_instance.best_solution(ga_instance.last_generation_fitness)
-    print(f"Parameters of the best solution : {solution}")
+    # print(f"Parameters of the best solution : {solution}")
     print(f"Fitness value of the best solution = {solution_fitness}")
     check_valid(solution)
     print(f"Objective Score: {objective_score(solution)}")
@@ -213,6 +184,8 @@ def main():
 
     # print average diveristy value
     print(f"Average Diversity: {np.mean(diversity_values)}")
+
+
 
     # Average criticality of allocated flows
     totalCrit = 0
@@ -234,7 +207,7 @@ def main():
 
     # plotObjectiveScores()
 
-    # ga_instance.plot_pareto_front_curve()
+    # # ga_instance.plot_pareto_front_curve()
 
     # ga_instance.plot_new_solution_rate()
 

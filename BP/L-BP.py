@@ -45,9 +45,9 @@ def l_bp(worstFit=False, bestFit=False, firstFit=False):
                 ALLOCATIONS[flow] = {"Network": network, "Criticality Level": i}
 
     # print allocations and format it nicely
-    print("Allocations:")
-    for flow, allocation in ALLOCATIONS.items():
-        print(f"Flow {flow} -> Network {allocation['Network']} at Criticality Level {allocation['Criticality Level']}")
+    # print("Allocations:")
+    # for flow, allocation in ALLOCATIONS.items():
+    #     print(f"Flow {flow} -> Network {allocation['Network']} at Criticality Level {allocation['Criticality Level']}")
 
 def wf(bandwidth, residualNetworkCap):
     max_cap = max(residualNetworkCap)
@@ -81,8 +81,8 @@ def networksCost(flowId=None):
         total_cost[network_id] += critC[flow] / critT[flow]
 
     # print total cost and network cost
-    for i, cost in enumerate(total_cost):
-        print(f"Network {i} -> Total Cost: {cost} / Network Capacity: {NETWORKS[i]}")
+    # for i, cost in enumerate(total_cost):
+    #     print(f"Network {i} -> Total Cost: {cost} / Network Capacity: {NETWORKS[i]}")
 
     residual_bandwidth = [NETWORKS[i] - total_cost[i] for i in range(len(NETWORKS))]
 
@@ -97,7 +97,7 @@ def objectiveScore():
         totalCriticality += crit_level + 1
     
     # Average criticality level
-    print("Average Criticality Level: ", totalCriticality / len(ALLOCATIONS))
+    # print("Average Criticality Level: ", totalCriticality / len(ALLOCATIONS))
     return score
 
 
@@ -107,15 +107,33 @@ def main():
     NETWORKS, L = read_networks('../networks.csv')
     L = int(L)
 
-    l_bp(bestFit=True)
-    print(f"Objective Score: {objectiveScore()}")
+    # Measure the start time
+    start_time = time.time()
 
-    # print(ALLOCATIONS[1792])
+    # Run the L-BP algorithm with Best Fit
+    l_bp(bestFit=True)
+
+    # Measure the end time
+    end_time = time.time()
+
+    # Calculate and print the elapsed time
+    elapsed_time = end_time - start_time
+
+    print(f"Objective Score: {objectiveScore()}")
 
     print("Number of allocated flows: ", len(ALLOCATIONS))
 
+    print(f"Running Time: {elapsed_time:.4f} seconds")
+
+    # average criticality of flows
+    totalCriticality = 0
+    for flow, allocation in ALLOCATIONS.items():
+        totalCriticality += allocation["Criticality Level"] + 1
+    print("Average Criticality Level: ", totalCriticality / len(ALLOCATIONS))
+
     networksCost()
 
+    # Write allocations to a CSV file
     with open('alloc.csv', 'w', newline='') as csvfile:
         fieldnames = ['Flow', 'Network', 'Criticality Level']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -123,5 +141,6 @@ def main():
         writer.writeheader()
         for flow, allocation in ALLOCATIONS.items():
             writer.writerow({'Flow': flow, 'Network': allocation['Network'], 'Criticality Level': allocation['Criticality Level']})
+
 if __name__ == '__main__':
     main()

@@ -1,9 +1,5 @@
-import numpy as np
-import pandas as pd
 import time
-import math
 from collections import defaultdict
-from tabulate import tabulate
 from readData import read_data, read_networks
 
 import csv
@@ -44,9 +40,9 @@ def h_bp(worstFit=False, bestFit=False, firstFit=False):
 
 
     # print allocations and format it nicely
-    print("Allocations:")
-    for flow, allocation in ALLOCATIONS.items():
-        print(f"Flow {flow} -> Network {allocation['Network']} at Criticality Level {allocation['Criticality Level']}")
+    # print("Allocations:")
+    # for flow, allocation in ALLOCATIONS.items():
+    #     print(f"Flow {flow} -> Network {allocation['Network']} at Criticality Level {allocation['Criticality Level']}")
 
 def ff(bandwidth, residualNetworkCap):
     for i, cap in enumerate(residualNetworkCap):
@@ -103,22 +99,38 @@ def objectiveScore():
 
 def main():
     global CRIT, L, NETWORKS
-    CRIT = read_data(DATA_FILE)
+    CRIT = read_data('../message_flows.csv')
     NETWORKS, L = read_networks('../networks.csv')
     L = int(L)
 
-    print(f"Number of Networks: {(NETWORKS)}")
-    print(f"Number of Criticality Levels: {L}")
+    # Measure the start time
+    start_time = time.time()
 
+    # Run the L-BP algorithm with Best Fit
     h_bp(bestFit=True)
-    print(f"Objective Score: {objectiveScore()}")
+    # h_bp(worstFit=True)
 
-    # print(ALLOCATIONS[1792])
+    # Measure the end time
+    end_time = time.time()
+
+    # Calculate and print the elapsed time
+    elapsed_time = end_time - start_time
+
+    print(f"Objective Score: {objectiveScore()}")
 
     print("Number of allocated flows: ", len(ALLOCATIONS))
 
+    print(f"Running Time: {elapsed_time:.4f} seconds")
+
+    # average criticality of flows
+    totalCriticality = 0
+    for flow, allocation in ALLOCATIONS.items():
+        totalCriticality += allocation["Criticality Level"] + 1
+    print("Average Criticality Level: ", totalCriticality / len(ALLOCATIONS))
+
     networksCost()
 
+    # Write allocations to a CSV file
     with open('alloc.csv', 'w', newline='') as csvfile:
         fieldnames = ['Flow', 'Network', 'Criticality Level']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -126,5 +138,6 @@ def main():
         writer.writeheader()
         for flow, allocation in ALLOCATIONS.items():
             writer.writerow({'Flow': flow, 'Network': allocation['Network'], 'Criticality Level': allocation['Criticality Level']})
+
 if __name__ == '__main__':
     main()

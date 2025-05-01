@@ -368,7 +368,7 @@ System.out.println("%="+allocated+"/"+total+"="+(double)allocated/total);
 		int totalCrit=0;
 		for(Allocation a: allocations){
 			
-			totalCrit = totalCrit+a.getCritLevel();
+			totalCrit = totalCrit+a.getCritLevel() + 1;
 		}
 
 		

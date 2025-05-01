@@ -85,7 +85,7 @@ def fitness_func2(ga_instance, solution, solution_idx):
         total_cost[net] += (crit_c[mfIndex] / crit_t[mfIndex])
         
         if not invalid:
-            fitness += ((L - crit) ** 2) * mf_score(mfIndex)
+            fitness += ((L - crit)) * mf_score(mfIndex)
         else:
             fitness += (crit + 1)
 
@@ -184,7 +184,7 @@ def main():
                         fitness_func=fitness_func2,
                         gene_type=int,
                         on_generation=on_generation,
-                        gene_space=[{'low': 0, 'high': len(NETWORKS)}, {'low': 0, 'high': L}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
+                        gene_space=[{'low': 0, 'high': len(NETWORKS)}, {'low': 0, 'high': L - 1}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
                         # save_solutions=True,
                         parent_selection_type="sss",
                         mutation_type="random",

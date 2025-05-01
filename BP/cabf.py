@@ -47,9 +47,9 @@ def cabf_algorithm():
                     ALLOCATED_FLOWS.append(flow)
 
     # print allocations and format it nicely
-    print("Allocations:")
-    for flow, allocation in ALLOCATIONS.items():
-        print(f"Flow {flow} -> Network {allocation['Network']} at Criticality Level {allocation['Criticality Level']}")
+    # print("Allocations:")
+    # for flow, allocation in ALLOCATIONS.items():
+    #     print(f"Flow {flow} -> Network {allocation['Network']} at Criticality Level {allocation['Criticality Level']}")
 
 def bestFit(bandwidth, residualNetworkCap):
     best_fit = -1
@@ -71,8 +71,8 @@ def networksCost(flowId=None):
         total_cost[network_id] += critC[flow] / critT[flow]
 
     # print total cost and network cost
-    for i, cost in enumerate(total_cost):
-        print(f"Network {i} -> Total Cost: {cost} / Network Capacity: {NETWORKS[i]}")
+    # for i, cost in enumerate(total_cost):
+    #     print(f"Network {i} -> Total Cost: {cost} / Network Capacity: {NETWORKS[i]}")
 
     residual_bandwidth = [NETWORKS[i] - total_cost[i] for i in range(len(NETWORKS))]
 
@@ -91,10 +91,22 @@ def main():
     CRIT = read_data(DATA_FILE)
     NETWORKS, L = read_networks('../networks.csv')
 
+    # Measure the start time
+    start_time = time.time()
+
+    # Run the CABF algorithm
     cabf_algorithm()
+
+    # Measure the end time
+    end_time = time.time()
+
+    # Calculate and print the elapsed time
+    elapsed_time = end_time - start_time
+    print(f"Running Time: {elapsed_time:.4f} seconds")
+
     print(f"Objective Score: {objectiveScore()}")
 
-    # average criticality of allocated flows
+    # Average criticality of allocated flows
     avg_crit = sum([allocation["Criticality Level"] + 1 for allocation in ALLOCATIONS.values()]) / len(ALLOCATIONS)
     print(f"Average Criticality of Allocated Flows: {avg_crit}")
 
@@ -102,6 +114,7 @@ def main():
 
     networksCost()
 
+    # Write allocations to a CSV file
     with open('alloc.csv', 'w', newline='') as csvfile:
         fieldnames = ['Flow', 'Network', 'Criticality Level']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -109,5 +122,6 @@ def main():
         writer.writeheader()
         for flow, allocation in ALLOCATIONS.items():
             writer.writerow({'Flow': flow, 'Network': allocation['Network'], 'Criticality Level': allocation['Criticality Level']})
+
 if __name__ == '__main__':
     main()

@@ -26,6 +26,19 @@ generation_times = []
 diversity_values = []
 start_time = time.time()
 
+def networkAvailabilityRatio():
+    totalNetworkCapacity = 0
+    for networkCapacity in NETWORKS:
+        totalNetworkCapacity += networkCapacity
+    
+    totalBandwidthRequirement = 0
+    crit_c, crit_t = CRIT[0]
+    for i in range(len(crit_c)):
+        if crit_c[i] is not None:
+            totalBandwidthRequirement += (crit_c[i] / crit_t[i])
+
+    return totalNetworkCapacity / totalBandwidthRequirement
+
 def objective_score(solution):
     score = 0
 
@@ -68,8 +81,9 @@ def initialize_population():
 def generate_initial_population(base_solution, population_size=100):
     """Generate diverse initial solutions based on a given base solution."""
     # initial_population = [base_solution]  # Start with the base solution
-    print(f'Diversity of Base Solution: {calculate_diversity(base_solution)}')
     initial_population = []
+    mutation_rate = networkAvailabilityRatio() + 0.1
+    print(f"Mutation Percentage: {mutation_rate}")
     for i in range(population_size):
         new_solution = None
         # if i >= population_size // 2:
@@ -77,26 +91,22 @@ def generate_initial_population(base_solution, population_size=100):
             new_solution = []
             for idx in range(0, len(base_solution), 2):
                 new_solution.append(random.randint(0, len(NETWORKS) - 1))
-                new_solution.append(random.randint(0, L - 1))
+                new_solution.append(random.randint(0, L - 2))
 
         else:   
             new_solution = base_solution.copy()
 
             # Modify a subset of the solution randomly
-            num_changes = int( (len(base_solution) // 2) * 0.1 )# Change 33% of the solution
+            num_changes = int( (len(base_solution) // 2) * mutation_rate )
             change_indices = random.sample(range(0, len(base_solution), 2), num_changes)  # Select random flows to change
 
             for idx in change_indices:
                 # Randomly assign a new network and criticality within valid range
                 new_solution[idx] = random.randint(0, len(NETWORKS) - 1)  # Network assignment
-                new_solution[idx + 1] = random.randint(0, L - 1)  # Criticality assignment
+                new_solution[idx + 1] = random.randint(0, L-2)  # Criticality assignment
 
         initial_population.append(new_solution)
     
-    # for idx, solution in enumerate(initial_population):
-    #     # print the objective score of each solution 
-    #     print(f"Objective Score of Solution {idx}: {objective_score(solution)}")
-    #     print(f'Diversity of Solution {idx}: {calculate_diversity(solution)}')
     return initial_population
 
 def mf_check(i, crit):
@@ -135,7 +145,7 @@ def fitness_func2(ga_instance, solution, solution_idx):
     for i, cost in enumerate(total_cost):
         if cost > NETWORKS[i]:
             invalid = True
-            diff += ((cost - NETWORKS[i]) / NETWORKS[i]) * 100000
+            diff += ((cost - NETWORKS[i]) / NETWORKS[i]) * 100
 
     for i in range(0, len(solution), 2):
         net = solution[i]
@@ -150,21 +160,36 @@ def fitness_func2(ga_instance, solution, solution_idx):
         total_cost[net] += (crit_c[mfIndex] / crit_t[mfIndex])
         
         if not invalid:
-            fitness += (L - crit) ** 2
+            fitness += ((L - crit)) * mf_score(mfIndex) 
         else:
             fitness += (crit + 1) # the only difference between FF1 and FF2
 
     if invalid:
         fitness -= diff
 
-    res = [fitness]
-
     # number of allocated flows
     allocated_flows = sum(1 for i in range(0, len(solution), 2) if mf_check(i // 2, solution[i + 1]))
-    res.append(allocated_flows)
+
+    # if invalid:
+    #     fitness -= diff
+    #     allocated_flows *= -1
+    #     allocated_flows -= diff
+
+    # res = [fitness, allocated_flows]
+
+    if invalid:
+        fitness -= diff
+
+    res = fitness * allocated_flows
 
 
-    return fitness * allocated_flows
+    return res
+
+def mf_score(mf):
+    for crit in range(L - 1, -1, -1):
+        # Calculate the score for the message flow at the given criticality level
+        if mf_check(mf, crit):
+            return crit + 1
 
 def check_valid(solution):
     """Check if the solution is valid and print any violations."""
@@ -184,11 +209,12 @@ def check_valid(solution):
     for i, cost in enumerate(total_cost):
         print(f'Network {i} limit, {cost} > {NETWORKS[i]}')
 
-def calculate_diversity(population):
+def calculate_genetic_drift(population, best_solution):
     """Calculate the diversity of the population."""
-    population_array = np.array(population)
-    diversity = np.mean(np.std(population_array, axis=0))
-    return diversity
+    population = np.array(population)
+    best_solution = np.array(best_solution)
+    total_distance = np.sum(np.sum(population != best_solution, axis=1))
+    return total_distance / len(population)
 
 def on_generation(ga_instance):
     """Callback function to execute at the end of each generation."""
@@ -204,18 +230,26 @@ def on_generation(ga_instance):
     average_fitness = np.mean(ga_instance.last_generation_fitness)
     average_fitness_values.append(average_fitness)
     
-    diversity = calculate_diversity(ga_instance.population)
+    diversity = calculate_genetic_drift(ga_instance.population, best_solution)
     diversity_values.append(diversity)
     
     print(f"Generation = {ga_instance.generations_completed}")
     print(f"Best Fitness = {best_solution_fitness}")
     print(f"Objective Score = {objectiveScore}")
+    print(f'Diversity = {diversity}')
 
 def plotObjectiveScores():
     plt.plot(objectiveScores)
     plt.xlabel('Generation')
     plt.ylabel('Objective Score')
     plt.title('Objective Score over Generations')
+    plt.show()
+
+def plotDiversity():
+    plt.plot(diversity_values)
+    plt.xlabel("Generation")
+    plt.ylabel("Genetic Drift (Hamming Distance from Best)")
+    plt.title("Genetic Drift Over Generations (Mutation Rate = 0.1)")
     plt.show()
 
 def main():
@@ -234,11 +268,11 @@ def main():
                             fitness_func=fitness_func2,
                             gene_type=int,
                             on_generation=on_generation,
-                            gene_space=[{'low': 0, 'high': len(NETWORKS)}, {'low': 0, 'high': L + 1}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
+                            gene_space=[{'low': 0, 'high': len(NETWORKS)}, {'low': 0, 'high': L-1}] * len(CRIT[0][0]), # CHANGE THIS WHEN CHANGING CRITICALITY
                             # save_solutions=True,
                             parent_selection_type="sss",
                             mutation_type="random",
-                            stop_criteria="saturate_15",
+                            stop_criteria="saturate_5",
                             crossover_type="scattered",
                         )
 
@@ -282,9 +316,14 @@ def main():
     # Print metrics
     print(f"Average Time per Generation: {total_execution_time / len(generation_times)} seconds")
 
-    # ga_instance.plot_fitness()
+    ga_instance.plot_fitness()
+    # plotObjectiveScores()
 
     # ga_instance.plot_new_solution_rate()
+
+    # print average diveristy value
+    print(f"Average Diversity: {np.mean(diversity_values)}")
+    plotDiversity()
 
 if __name__ == "__main__":
     main()
