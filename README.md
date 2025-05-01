@@ -48,7 +48,7 @@ pip install numpy pandas pygad matplotlib
 ## 🚀 How to Run
 
 ### 1. Generate Benchmark Files
-Compile and run the Java benchmark generator to create the required CSV files:
+Navigate to lsi/multinet/binpacking and compile and run the Java benchmark generator to create the required CSV files:
 
 ```bash
 javac main.java
